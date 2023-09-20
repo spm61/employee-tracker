@@ -8,5 +8,8 @@
     "start": "node server.js"
   },
   "author": "Sean Moroney",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "inquirer": "^8.2.4"
+  }
 }
