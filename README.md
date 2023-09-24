@@ -25,6 +25,8 @@
   ## Testing:
   Follow the usage instructions to test the basic functionality. If you wish, you can experiment with different values.  The text prompt will guide you through most of the process and also validates input.  
 
+  A video walkthrough describing the application's functions can be found here: https://watch.screencastify.com/v/YXZoLrjEflYHh2YZF8BS
+
   ## Licensing:
   This application has the MIT license.
   For more information, please go to 
