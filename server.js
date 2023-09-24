@@ -12,11 +12,9 @@ const connection = mysql.createConnection({
     database: process.env.DB_NAME
   });
   
-  //Then, attempt to use the connection.  
-  connection.connect(err => {
-    if (err) {
-        console.error('Failed to connect to the database');
-    }
+//Then, attempt to use the connection.  
+connection.connect(err => {
+    if (err) throw err;
     console.log('connected as id ' + connection.threadId);
     welcometoDatabase();
   });
@@ -112,16 +110,15 @@ const userInteraction = () => {
       };
     });
   };
-  
+
+//the queries follow below.  I don't normally like throwing errors without doing something with them, but I need execution to actually stop in as few lines as possible.
 //If the user wants to see departments, that's what we give them.
 getAllDepartments = () => {
     console.log('Getting all departments..\n');
     const sql = `SELECT department.id AS id, department.name AS department FROM department`; 
   
     connection.promise().query(sql, (err, rows) => {
-        if (err) { //I want to actually do something with an error if we get any back.  
-            console.error('Failed to get all departments.  Ensure you are properly connected to the database and try again.');
-        }
+      if (err) throw err;
       console.table(rows);
       userInteraction(); //if successfull, ask the user to perform another action.
     });
@@ -136,9 +133,7 @@ getAllRoles = () => {
                  INNER JOIN department ON role.department_id = department.id`;
     
     connection.promise().query(sql, (err, rows) => {
-        if (err) { 
-            console.error('Failed to get all roles.  Ensure you are properly connected to the database and try again.');
-        }
+      if (err) throw err;
       console.table(rows); 
       userInteraction();
     })
@@ -160,9 +155,7 @@ getAllEmployees = () => {
                         LEFT JOIN employee manager ON employee.manager_id = manager.id`;
   
     connection.promise().query(sql, (err, rows) => {
-        if (err) { 
-            console.error('Failed to get all employees.  Ensure you are properly connected to the database and try again.');
-        }
+      if (err) throw err;
       console.table(rows);
       userInteraction ();
     });
@@ -189,9 +182,7 @@ addDepartment = () => {
         const sql = `INSERT INTO department (name)
                     VALUES (?)`;
         connection.query(sql, response.deptToAdd, (err, result) => {
-            if (err) { 
-                console.error('Failed to get all employees.  Ensure you are properly connected to the database and try again.');
-            }
+            if (err) throw err;
           console.log('Added ' + response.deptToAdd + " to departments! Getting updated table.");       
           getAllDepartments(); //show the table to demonstrate that it was updated.
       });
@@ -236,9 +227,7 @@ addRole = () => {
         const roleSql = `SELECT name, id FROM department`; 
   
         connection.promise().query(roleSql, (err, data) => {
-            if (err) { 
-                console.error('Failed to get detination departments.  Ensure you are properly connected to the database and try again.');
-            }
+            if (err) throw err;
       
           const departments = data.map(({ name, id }) => ({ name: name, value: id })); //map the data returned into a useable array.
   
@@ -260,6 +249,7 @@ addRole = () => {
               connection.query(sql, params, (err, result) => {
                 if (err) { 
                     console.error('Failed to insert a role.  Ensure you are properly connected to the database and try again.');
+                    throw err;
                 }
                 console.log('Added' + response.role + " to roles!  Getting updated table..."); 
   
@@ -308,7 +298,8 @@ addEmployee = () => {
     
       connection.promise().query(roleSql, (err, data) => {
         if (err) { 
-            console.error('Failed to get assignable roles.  Ensure you are properly connected to the database and try again.');
+            console.error('Failed to get assignable roles.  Ensure you are properly connected to the database and try again.')
+            throw err;
         }
         
         const roles = data.map(({ id, title }) => ({ name: title, value: id })); //map the data to an array so it can be used.
@@ -361,5 +352,118 @@ addEmployee = () => {
             });
           });
        });
+    });
+  };
+
+updateEmployee = () => {
+    //Get the list of employees so one can be chosen to update. 
+    const employeeSql = `SELECT * FROM employee`;
+  
+    connection.promise().query(employeeSql, (err, data) => {
+      if (err) throw err; 
+  
+    const employees = data.map(({ id, first_name, last_name }) => ({ name: first_name + " "+ last_name, value: id }));
+  
+      inquirer.prompt([
+        {
+          type: 'list',
+          name: 'employeeName',
+          message: "Which employee would you like to update?",
+          choices: employees
+        }
+      ])
+        .then(empChoice => {
+          const employee = empChoice.employeeName;
+          const params = []; //start preparing the params array.
+  
+          //get the roles to assign.
+          const roleSql = `SELECT * FROM role`;
+  
+          connection.promise().query(roleSql, (err, data) => {
+            if (err) throw err; 
+  
+            const roles = data.map(({ id, title }) => ({ name: title, value: id }));
+            
+              inquirer.prompt([
+                {
+                  type: 'list',
+                  name: 'assignedRole',
+                  message: "What is the employee's new role?",
+                  choices: roles
+                }
+              ])
+                  .then(roleChoice => {
+                  const role = roleChoice.assignedRole;
+                  params.push(role); 
+                  
+                  params[0] = role; //make sure to add the params in the correct order.  
+                  params[1] = employee; 
+  
+                  const sql = `UPDATE employee SET role_id = ? WHERE id = ?`;
+  
+                  connection.query(sql, params, (err, result) => {
+                    if (err) throw err;
+                  console.log("Employee has been updated! Getting updated table...");
+                
+                  getAllEmployees();
+            });
+          });
+        });
+      });
+    });
+  };
+
+//Update an employee's manager.  There's gotta be a more efficient way to do this.
+updateManager = () => {
+    // get employees from employee table so one can be chosen.
+    const employeeSql = `SELECT * FROM employee`;
+  
+    connection.promise().query(employeeSql, (err, data) => {
+      if (err) throw err; 
+  
+    const employees = data.map(({ id, first_name, last_name }) => ({ name: first_name + " "+ last_name, value: id }));
+  
+      inquirer.prompt([
+        {
+          type: 'list',
+          name: 'employeeName',
+          message: "Which employee would you like to update?",
+          choices: employees
+        }
+      ])
+        .then(empChoice => {
+          const employee = empChoice.employeeName;
+          const params = []; 
+            
+          //we have our chosen employee, now we have to get our manager.  This is the same query as before, so we're not gonna redeclare it.
+            connection.promise().query(employeeSql, (err, data) => {
+              if (err) throw err; 
+  
+            const managers = data.map(({ id, first_name, last_name }) => ({ name: first_name + " "+ last_name, value: id }));
+              
+                inquirer.prompt([
+                  {
+                    type: 'list',
+                    name: 'managerName',
+                    message: "Who is the employee's manager?",
+                    choices: managers
+                  }
+                ])
+                    .then(managerChoice => {
+                      const manager = managerChoice.managerName;
+                      params.push(manager); //add the params in the right order.
+                      params.push(employee);
+
+                      const sql = `UPDATE employee SET manager_id = ? WHERE id = ?`;
+  
+                      connection.query(sql, params, (err, result) => {
+                        if (err) throw err;
+                      console.log("Employee has been updated! Getting updated table.");
+                    
+                      showEmployees();
+            });
+          });
+        });
+      });
     });
   };
