@@ -7,16 +7,16 @@ require('dotenv').config();
 //First, create the db connection object.
 const connection = mysql.createConnection({
     host: 'localhost',
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
+    user: 'root',
+    password: 'password',
+    database: process.env.DB_NAME,
   });
   
 //Then, attempt to use the connection.  
 connection.connect(err => {
     if (err) throw err;
     console.log('connected as id ' + connection.threadId);
-    welcometoDatabase();
+    welcomeToDatabase();
   });
 
   //Now that we're connected, let the user know they've entered the database.
@@ -42,7 +42,7 @@ const userInteraction = () => {
                   'Add an employee', 
                   'Update an employee role',
                   'Update an employee manager',
-                  "View employees by department",
+                  'View employees by department',
                   'Delete a department',
                   'Delete a role',
                   'Delete an employee',
@@ -50,64 +50,55 @@ const userInteraction = () => {
                   'Exit Database']
       }
     ]) //Then, once the user chooses an action, call a function to perform the action.
-      .then((responses) => {
-        const { choices } = responses; 
-  
-        if (choices === "View all departments") {
-          getAllDepartments();
+      .then((response) => {
+        const choice = response.choice; 
+
+        switch (choice) {
+            case 'View all departments':
+                getAllDepartments();
+                break;
+            case 'View all roles':
+                getAllRoles();
+                break;
+            case 'View all employees':
+                getAllEmployees();
+                break;
+            case 'Add a department':
+                addDepartment();
+                break;
+            case 'Add a role':
+                addRole();
+                break;
+            case 'Add an employee':
+                addEmployee();
+                break;
+            case 'Update an employee role':
+                updateEmployee();
+                break;
+            case 'Update an employee manager':
+                updateManager();
+                break;
+            case 'View employees by department':
+                getEmployeesByDepartment();
+                break;
+            case 'Delete a department':
+                deleteDepartment();
+                break;
+            case 'Delete a role':
+                deleteRole();
+                break;
+            case 'View department budgets':
+                viewDepartmentBudgets();
+                break;
+            case 'Delete an employee':
+                deleteEmployee();
+                break;
+            default:
+                console.log("Exiting database and ending process");
+                connection.end();
+                process.exit();
         }
   
-        if (choices === "View all roles") {
-          getAllRoles();
-        }
-  
-        if (choices === "View all employees") {
-          getAllEmployees();
-        }
-  
-        if (choices === "Add a department") {
-          addDepartment();
-        }
-  
-        if (choices === "Add a role") {
-          addRole();
-        }
-  
-        if (choices === "Add an employee") {
-          addEmployee();
-        }
-  
-        if (choices === "Update an employee role") {
-          updateEmployee();
-        }
-  
-        if (choices === "Update an employee manager") {
-          updateManager();
-        }
-  
-        if (choices === "View employees by department") {
-          getEmployeesByDepartment();
-        }
-  
-        if (choices === "Delete a department") {
-          deleteDepartment();
-        }
-  
-        if (choices === "Delete a role") {
-          deleteRole();
-        }
-  
-        if (choices === "Delete an employee") {
-          deleteEmployee();
-        }
-  
-        if (choices === "View department budgets") {
-          viewDepartmentBudgets();
-        }
-  
-        if (choices === "Exit Database") {
-          connection.end() //end the connection here because the user chose to.
-      };
     });
   };
 
@@ -117,7 +108,7 @@ getAllDepartments = () => {
     console.log('Getting all departments..\n');
     const sql = `SELECT department.id AS id, department.name AS department FROM department`; 
   
-    connection.promise().query(sql, (err, rows) => {
+    connection.query(sql, (err, rows) => {
       if (err) throw err;
       console.table(rows);
       userInteraction(); //if successfull, ask the user to perform another action.
@@ -132,7 +123,7 @@ getAllRoles = () => {
                  FROM role
                  INNER JOIN department ON role.department_id = department.id`;
     
-    connection.promise().query(sql, (err, rows) => {
+    connection.query(sql, (err, rows) => {
       if (err) throw err;
       console.table(rows); 
       userInteraction();
@@ -154,7 +145,7 @@ getAllEmployees = () => {
                         LEFT JOIN department ON role.department_id = department.id
                         LEFT JOIN employee manager ON employee.manager_id = manager.id`;
   
-    connection.promise().query(sql, (err, rows) => {
+    connection.query(sql, (err, rows) => {
       if (err) throw err;
       console.table(rows);
       userInteraction ();
@@ -211,22 +202,22 @@ addRole = () => {
         name: 'salaryToAdd',
         message: "What is the salary of this role?",
         validate: salaryToAdd  => {
-          if (isNAN(salaryToAdd)) { //if the salary is not a number, we don't want to add it.
+          if (!isNaN(salaryToAdd)) { //if the salary is not a number, we don't want to add it.
               return true;
           } else {
-              console.log('Please enter a salary');
+              console.log('\nPlease enter a salary');
               return false;
           }
         }
       }
     ])
       .then(response => {
-        const params = [response.role, response.salary]; //create parameters for the query.
+        const params = [response.roleToAdd, response.salaryToAdd]; //create parameters for the query.
   
         //Grab the department.
         const roleSql = `SELECT name, id FROM department`; 
   
-        connection.promise().query(roleSql, (err, data) => {
+        connection.query(roleSql, (err, data) => {
             if (err) throw err;
       
           const departments = data.map(({ name, id }) => ({ name: name, value: id })); //map the data returned into a useable array.
@@ -247,10 +238,7 @@ addRole = () => {
                           VALUES (?, ?, ?)`; //prepare the query with the provided information.
   
               connection.query(sql, params, (err, result) => {
-                if (err) { 
-                    console.error('Failed to insert a role.  Ensure you are properly connected to the database and try again.');
-                    throw err;
-                }
+                if (err) throw err;
                 console.log('Added' + response.role + " to roles!  Getting updated table..."); 
   
                 getAllRoles();
@@ -291,16 +279,13 @@ addEmployee = () => {
       }
     ])
       .then(response => {
-      const params = [response.fistName, response.lastName] //start building up the parameters
+      const params = [response.addFirstName, response.addLastName] //start building up the parameters
   
       //Get the roles so they can be assigned.
       const roleSql = `SELECT role.id, role.title FROM role`;
     
-      connection.promise().query(roleSql, (err, data) => {
-        if (err) { 
-            console.error('Failed to get assignable roles.  Ensure you are properly connected to the database and try again.')
-            throw err;
-        }
+      connection.query(roleSql, (err, data) => {
+        if (err) throw err;
         
         const roles = data.map(({ id, title }) => ({ name: title, value: id })); //map the data to an array so it can be used.
   
@@ -319,10 +304,8 @@ addEmployee = () => {
                 //assign a manager to the employee.  First get the rest of the employees.
                 const managerSql = `SELECT * FROM employee`;
   
-                connection.promise().query(managerSql, (err, data) => {
-                    if (err) { 
-                        console.error('Failed to get assinable managers.  Ensure you are properly connected to the database and try again.');
-                    }
+                connection.query(managerSql, (err, data) => {
+                    if (err) throw err;
   
                   const managers = data.map(({ id, first_name, last_name }) => ({ name: first_name + " "+ last_name, value: id }));
   
@@ -359,7 +342,7 @@ updateEmployee = () => {
     //Get the list of employees so one can be chosen to update. 
     const employeeSql = `SELECT * FROM employee`;
   
-    connection.promise().query(employeeSql, (err, data) => {
+    connection.query(employeeSql, (err, data) => {
       if (err) throw err; 
   
     const employees = data.map(({ id, first_name, last_name }) => ({ name: first_name + " "+ last_name, value: id }));
@@ -379,7 +362,7 @@ updateEmployee = () => {
           //get the roles to assign.
           const roleSql = `SELECT * FROM role`;
   
-          connection.promise().query(roleSql, (err, data) => {
+          connection.query(roleSql, (err, data) => {
             if (err) throw err; 
   
             const roles = data.map(({ id, title }) => ({ name: title, value: id }));
@@ -418,7 +401,7 @@ updateManager = () => {
     // get employees from employee table so one can be chosen.
     const employeeSql = `SELECT * FROM employee`;
   
-    connection.promise().query(employeeSql, (err, data) => {
+    connection.query(employeeSql, (err, data) => {
       if (err) throw err; 
   
     const employees = data.map(({ id, first_name, last_name }) => ({ name: first_name + " "+ last_name, value: id }));
@@ -436,7 +419,7 @@ updateManager = () => {
           const params = []; 
             
           //we have our chosen employee, now we have to get our manager.  This is the same query as before, so we're not gonna redeclare it.
-            connection.promise().query(employeeSql, (err, data) => {
+            connection.query(employeeSql, (err, data) => {
               if (err) throw err; 
   
             const managers = data.map(({ id, first_name, last_name }) => ({ name: first_name + " "+ last_name, value: id }));
@@ -478,7 +461,7 @@ getEmployeesByDepartment = () => {
                  LEFT JOIN role ON employee.role_id = role.id 
                  LEFT JOIN department ON role.department_id = department.id`;
   
-    connection.promise().query(sql, (err, rows) => {
+    connection.query(sql, (err, rows) => {
       if (err) throw err; 
       console.table(rows); 
       userInteraction();
@@ -489,7 +472,7 @@ getEmployeesByDepartment = () => {
 deleteDepartment = () => {
     const deptartmentSql = `SELECT * FROM department`; //first get the list of departments.
   
-    connection.promise().query(deptartmentSql, (err, data) => {
+    connection.query(deptartmentSql, (err, data) => {
       if (err) throw err; 
   
       const deptartments = data.map(({ name, id }) => ({ name: name, value: id }));
@@ -520,7 +503,7 @@ deleteDepartment = () => {
 deleteRole = () => {
     const roleSql = `SELECT * FROM role`; //get all the roles.
   
-    connection.promise().query(roleSql, (err, data) => {
+    connection.query(roleSql, (err, data) => {
       if (err) throw err; 
   
       const roles = data.map(({ title, id }) => ({ name: title, value: id }));
@@ -552,7 +535,7 @@ deleteEmployee = () => {
     // get employees from employee table 
     const employeeSql = `SELECT * FROM employee`;
   
-    connection.promise().query(employeeSql, (err, data) => {
+    connection.query(employeeSql, (err, data) => {
       if (err) throw err; 
   
     const employees = data.map(({ id, first_name, last_name }) => ({ name: first_name + " "+ last_name, value: id }));
@@ -591,7 +574,7 @@ viewDepartmentBudgets = () => {
                  FROM  role  
                  JOIN department ON role.department_id = department.id GROUP BY  department_id`;
     
-    connection.promise().query(sql, (err, rows) => {
+    connection.query(sql, (err, rows) => {
       if (err) throw err; 
       console.table(rows);
   
