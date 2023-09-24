@@ -16,11 +16,14 @@ CREATE TABLE role {
     CONSTRAINT foreignkey_department FOREIGN KEY (department_id) REFERENCES department(id) ON DELETE SET NULL
 };
 
-CREATE TABLE employee {
+CREATE TABLE employee (
     id INT PRIMARY KEY AUTO_INCREMENT,
     first_name VARCHAR(30) NOT NULL,
-    last_name VARCHAR(30) NOT NULL.
-    role_id INT,
+    last_name VARCHAR(30) NOT NULL,
+    role_id INT, 
     INDEX role_index (role_id),
-    CONSTRAINT foreignkey_role FOREIGN KEY (role_id) referenes role(id) ON DELETE SET NULL
-};
+    CONSTRAINT foreginkey_role FOREIGN KEY (role_id) REFERENCES role(id) ON DELETE SET NULL,
+    manager_id INT,
+    INDEX manager_index (manager_id),
+    CONSTRAINT foreignkey_manager FOREIGN KEY (manager_id) REFERENCES employee(id) ON DELETE SET NULL
+);
