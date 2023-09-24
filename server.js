@@ -189,8 +189,8 @@ addDepartment = () => {
     });
   };
 
-  //Add a role at the user's request
-  //Good Lord this is starting to get complicated...
+//Add a role at the user's request
+//Good Lord this is starting to get complicated...
 addRole = () => {
     inquirer.prompt([
       {
@@ -260,7 +260,7 @@ addRole = () => {
    });
   };
 
-  // function to add an employee 
+//insert an employee into the table.
 addEmployee = () => {
     inquirer.prompt([ //first we have to ask what they want...
       {
@@ -460,10 +460,141 @@ updateManager = () => {
                         if (err) throw err;
                       console.log("Employee has been updated! Getting updated table.");
                     
-                      showEmployees();
+                      getAllEmployees();
             });
           });
         });
       });
     });
+  };
+
+//get the employees by which department they're in.  Requires a join.
+getEmployeesByDepartment = () => {
+    console.log('Getting all employee by departments...\n');
+    const sql = `SELECT employee.first_name, 
+                        employee.last_name, 
+                        department.name AS department
+                 FROM employee 
+                 LEFT JOIN role ON employee.role_id = role.id 
+                 LEFT JOIN department ON role.department_id = department.id`;
+  
+    connection.promise().query(sql, (err, rows) => {
+      if (err) throw err; 
+      console.table(rows); 
+      userInteraction();
+    });          
+  };
+
+//Remove a department from the table.
+deleteDepartment = () => {
+    const deptartmentSql = `SELECT * FROM department`; //first get the list of departments.
+  
+    connection.promise().query(deptartmentSql, (err, data) => {
+      if (err) throw err; 
+  
+      const deptartments = data.map(({ name, id }) => ({ name: name, value: id }));
+  
+      inquirer.prompt([
+        {
+          type: 'list', 
+          name: 'deptToDelete',
+          message: "What department do you want to delete?",
+          choices: deptartments
+        }
+      ])
+        .then(deptChoice => {
+          const dept = deptChoice.deptToDelete;
+          const sql = `DELETE FROM department WHERE id = ?`;
+  
+          connection.query(sql, dept, (err, result) => { //only one param, so we don't need an array this time.
+            if (err) throw err;
+            console.log("Successfully deleted department! Getting updated list"); 
+  
+          getAllDepartments();
+        });
+      });
+    });
+  };
+
+//Delete a role from the table
+deleteRole = () => {
+    const roleSql = `SELECT * FROM role`; //get all the roles.
+  
+    connection.promise().query(roleSql, (err, data) => {
+      if (err) throw err; 
+  
+      const roles = data.map(({ title, id }) => ({ name: title, value: id }));
+  
+      inquirer.prompt([
+        {
+          type: 'list', 
+          name: 'roleToDelete',
+          message: "What role do you want to delete?",
+          choices: roles
+        }
+      ])
+        .then(roleChoice => {
+          const role = roleChoice.roleToDelete;
+          const sql = `DELETE FROM role WHERE id = ?`;
+  
+          connection.query(sql, role, (err, result) => {
+            if (err) throw err;
+            console.log("Successfully deleted role!  Getting updated table..."); 
+  
+            getAllRoles();
+        });
+      });
+    });
+  };
+
+//Take out an employee from the table.  You better not be firing them, you MONSTER!
+deleteEmployee = () => {
+    // get employees from employee table 
+    const employeeSql = `SELECT * FROM employee`;
+  
+    connection.promise().query(employeeSql, (err, data) => {
+      if (err) throw err; 
+  
+    const employees = data.map(({ id, first_name, last_name }) => ({ name: first_name + " "+ last_name, value: id }));
+  
+      inquirer.prompt([
+        {
+          type: 'list',
+          name: 'employeeName',
+          message: "Which employee would you like to delete?",
+          choices: employees
+        }
+      ])
+        .then(empChoice => {
+          const employee = empChoice.employeeName;
+  
+          const sql = `DELETE FROM employee WHERE id = ?`;
+  
+          connection.query(sql, employee, (err, result) => {
+            if (err) throw err;
+            console.log("Successfully Deleted employee!  Getting updated table...");
+          
+            getAllEmployees();
+      });
+    });
+   });
+  };
+
+//See each department's budget.  So you know which ones to heartlessly delete when you need more money.  I'm not bitter why do you ask?
+//Anyway, we need a join AND an aggregate function here.
+viewDepartmentBudgets = () => {
+    console.log('Getting budget by department...\n');
+  
+    const sql = `SELECT department_id AS id, 
+                        department.name AS department,
+                        SUM(salary) AS budget
+                 FROM  role  
+                 JOIN department ON role.department_id = department.id GROUP BY  department_id`;
+    
+    connection.promise().query(sql, (err, rows) => {
+      if (err) throw err; 
+      console.table(rows);
+  
+      userInteraction(); 
+    });            
   };
